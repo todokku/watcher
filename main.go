@@ -3,7 +3,6 @@ package main
 import (
 	"bufio"
 	"crypto/tls"
-	"github.com/headzoo/surf"
 	"flag"
 	"fmt"
 	"math/rand"
@@ -12,6 +11,8 @@ import (
 	urlpkg "net/url"
 	"os"
 	"time"
+
+	"github.com/headzoo/surf"
 )
 
 func GetCookie(url string, pref string, visitor string, ysc string) *cookiejar.Jar {
@@ -100,7 +101,7 @@ func randomString(size int, filename string) string {
 	return key
 }
 
-func Start(count3 int , urls string,count2 int,useragents string,count1 int,proxy string, timeout int64) {
+func Start(count3 int, urls string, count2 int, useragents string, count1 int, proxy string, timeout int64) {
 	for {
 		_proxy := randomString(count1, proxy)
 		_useragent := randomString(count2, useragents)
@@ -115,8 +116,8 @@ func Start(count3 int , urls string,count2 int,useragents string,count1 int,prox
 			TLSClientConfig: &tls.Config{},
 		}
 		bow.SetTransport(&transport)
-		bow.SetTimeout(time.Duration(time.Second * time.Duration(timeout)))
 		err := bow.Open(_url)
+		time.Sleep(time.Duration(time.Second * time.Duration(timeout)))
 		if err != nil {
 			fmt.Println(os.Stderr, "open url error", err)
 		}
@@ -168,7 +169,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	go Start(count3,*urls,count2,*useragents,count1,*proxy, *timeout)
+	go Start(count3, *urls, count2, *useragents, count1, *proxy, *timeout)
 	var input string
 	fmt.Scanln(&input)
 }
