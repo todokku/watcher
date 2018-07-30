@@ -116,8 +116,8 @@ func Start(count3 int, urls string, count2 int, useragents string, count1 int, p
 			TLSClientConfig: &tls.Config{},
 		}
 		bow.SetTransport(&transport)
+		bow.SetTimeout(time.Duration(time.Second * time.Duration(timeout)))
 		err := bow.Open(_url)
-		time.Sleep(time.Duration(time.Second * time.Duration(timeout)))
 		if err != nil {
 			fmt.Println(os.Stderr, "open url error", err)
 		}
