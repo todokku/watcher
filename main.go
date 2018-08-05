@@ -75,7 +75,7 @@ func Starting(count3 int, urls string, count2 int, useragents string, count1 int
 		chromeCaps := chrome.Capabilities{
 			Path: "",
 			Args: []string{
-				"--proxy-server=https://" + _proxy,
+				"--proxy-server=http://" + _proxy,
 				"--no-sandbox=true",
 				"--user-agent=" + _useragent,
 			},
