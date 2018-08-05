@@ -2,63 +2,16 @@ package main
 
 import (
 	"bufio"
-	"crypto/tls"
 	"flag"
 	"fmt"
 	"math/rand"
-	"net/http"
-	"net/http/cookiejar"
-	urlpkg "net/url"
+	"net"
 	"os"
 	"time"
 
-	"github.com/headzoo/surf"
+	"github.com/ego008/selenium"
+	"github.com/tebeka/selenium/chrome"
 )
-
-func GetCookie(url string, pref string, visitor string, ysc string) *cookiejar.Jar {
-	jar, _ := cookiejar.New(nil)
-	var cookies []*http.Cookie
-	firstCookie := &http.Cookie{
-		Name:   "PREF",
-		Value:  pref,
-		Path:   "/",
-		Domain: ".youtube.com",
-	}
-
-	cookies = append(cookies, firstCookie)
-
-	secondCookie := &http.Cookie{
-		Name:   "VISITOR_INFO1_LIVE",
-		Value:  visitor,
-		Path:   "/",
-		Domain: ".youtube.com",
-	}
-
-	cookies = append(cookies, secondCookie)
-
-	thirdCookie := &http.Cookie{
-		Name:   "YSC",
-		Value:  ysc,
-		Path:   "/",
-		Domain: ".youtube.com",
-	}
-
-	cookies = append(cookies, thirdCookie)
-
-	fourthCookie := &http.Cookie{
-		Name:   "GPS",
-		Value:  "1",
-		Path:   "/",
-		Domain: ".youtube.com",
-	}
-
-	cookies = append(cookies, fourthCookie)
-
-	cookieURL, _ := urlpkg.Parse(url)
-
-	jar.SetCookies(cookieURL, cookies)
-	return jar
-}
 
 func FindLineCount(filename string) int {
 	file, _ := os.Open(filename)
@@ -101,28 +54,64 @@ func randomString(size int, filename string) string {
 	return key
 }
 
-func Start(count3 int, urls string, count2 int, useragents string, count1 int, proxy string, timeout int64) {
+func Starting(count3 int, urls string, count2 int, useragents string, count1 int, proxy string, timeout int64) {
 	for {
 		_proxy := randomString(count1, proxy)
 		_useragent := randomString(count2, useragents)
 		_url := randomString(count3, urls)
-		bow := surf.NewBrowser()
-		bow.SetUserAgent(_useragent)
-		jar := GetCookie(_url, "f1=50000000", "Wb4lvmoVRNI", "tm6XNnZbjHI")
-		bow.SetCookieJar(jar)
-		px, _ := urlpkg.Parse(_proxy)
-		transport := http.Transport{
-			Proxy:           http.ProxyURL(px),
-			TLSClientConfig: &tls.Config{},
+		port, err := pickUnusedPort()
+		opts := []selenium.ServiceOption{
+			selenium.Output(os.Stderr),
 		}
-		bow.SetTransport(&transport)
-		bow.SetTimeout(time.Duration(time.Second * time.Duration(timeout)))
-		err := bow.Open(_url)
+		selenium.SetDebug(false)
+		service, err := selenium.NewIeDriverService("chromedriver.exe", port, opts...)
 		if err != nil {
-			fmt.Println(os.Stderr, "open url error", err)
+			return
 		}
-		fmt.Println("\n Useragent:", _useragent, "Proxy:", _proxy, "Url:", _url, "Response:", bow.ResponseHeaders(), "\n")
+		defer func() {
+			fmt.Println(service.Stop())
+		}()
+		caps := selenium.Capabilities{"browserName": "chrome"}
+		chromeCaps := chrome.Capabilities{
+			Path: "",
+			Args: []string{
+				"--proxy-server=https://" + _proxy,
+				"--no-sandbox=true",
+				"--user-agent=" + _useragent,
+			},
+		}
+		caps.AddChrome(chromeCaps)
+		wd, err := selenium.NewRemote(caps, fmt.Sprintf("http://localhost:%d", port))
+		if err != nil {
+			return
+		}
+		defer func() {
+			wd.Quit()
+		}()
+
+		if err := wd.Get(_url); err != nil {
+			return
+		}
+		fmt.Println(wd.WindowHandles())
 	}
+	time.Sleep(time.Second * time.Duration(timeout))
+}
+
+func pickUnusedPort() (int, error) {
+	addr, err := net.ResolveTCPAddr("tcp", "127.0.0.1:0")
+	if err != nil {
+		return 0, err
+	}
+
+	l, err := net.ListenTCP("tcp", addr)
+	if err != nil {
+		return 0, err
+	}
+	port := l.Addr().(*net.TCPAddr).Port
+	if err := l.Close(); err != nil {
+		return 0, err
+	}
+	return port, nil
 }
 
 func main() {
@@ -169,7 +158,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	go Start(count3, *urls, count2, *useragents, count1, *proxy, *timeout)
+	go Starting(count3, *urls, count2, *useragents, count1, *proxy, *timeout)
 	var input string
 	fmt.Scanln(&input)
 }
